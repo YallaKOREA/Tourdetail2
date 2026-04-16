@@ -10,7 +10,7 @@
       --brand-blue: #053f5c;
       --time-red: #d62828;
       --bg: #f2f4f7;
-      --card-inner-bg: #f8f9fa; /* 카드 내부 연회색 배경 */
+      --card-inner-bg: #f8f9fa;
     }
     body {
       margin: 0; padding: 15px;
@@ -50,11 +50,10 @@
     .header-text { flex: 1; }
     .arrow { font-size: 14px; color: #ccc; transition: transform 0.3s; }
 
-    /* 카드 열렸을 때 내부 스타일 */
     .card-content {
       max-height: 0; overflow: hidden;
       transition: max-height 0.4s ease-out;
-      background: var(--card-inner-bg); /* 배경색 차별화 */
+      background: var(--card-inner-bg);
       border-top: 1px solid #f0f0f0;
     }
     .inner-padding { padding: 12px; }
@@ -62,7 +61,6 @@
     .card.active .card-content { max-height: 5000px; }
     .card.active .arrow { transform: rotate(180deg); }
 
-    /* 각 정보 한 줄을 독립된 박스로 (가독성 핵심) */
     .info-line {
       margin-bottom: 10px;
       padding: 15px;
@@ -74,7 +72,7 @@
       display: block;
       box-shadow: 0 2px 4px rgba(0,0,0,0.02);
       word-break: break-all;
-      white-space: pre-wrap; /* 시트 내 줄바꿈 유지 */
+      white-space: pre-wrap;
       color: var(--brand-blue);
     }
     .info-line:last-child { margin-bottom: 0; }
@@ -120,6 +118,7 @@
   </div>
 
   <script>
+    // ✅ 앱스 스크립트 ID 유지
     var APPS_SCRIPT_ID = "AKfycbxMKtt63wGdau_aYKKYAHPAq1qGOI0FBC-cIWqVSOItx4iVUOjHgJS8tnowzmkeNTC79w";
 
     function getParam(name) {
@@ -142,27 +141,40 @@
 
     var tomorrowStr = getTomorrowKST();
 
+    // 💡 모든 링크를 추출하여 버튼으로 만드는 핵심 함수
     function processLine(line) {
       line = line.trim();
       if (!line) return null;
 
-      var timeReplaced = line.replace(/(\d{1,2}:\d{2})/g, '<span class="time-highlight">$1</span>');
-      var urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+      // 시간 강조
+      var processedText = line.replace(/(\d{1,2}:\d{2})/g, '<span class="time-highlight">$1</span>');
+      
+      // 모든 URL 찾기 정규식
+      var urlRegex = /(https?:\/\/[^\s]+)/g;
+      var urls = line.match(urlRegex);
 
-      if (urlMatch) {
-        var url = urlMatch[0];
-        var btnText  = "تفاصيل"; // 요청하신 대로 짧게 수정
-        var btnClass = "btn-detail";
-        if (line.includes("Weather") || line.includes("الجو")) {
-          btnText = "حالة الطقس"; btnClass = "btn-weather";
-        } else if (line.includes("wa.me") || line.includes("Guide")) {
-          btnText = "التواصل مع مرشد سياحي"; btnClass = "btn-guide";
-        }
-        var textPart = timeReplaced.replace(/(https?:\/\/[^\s]+)/g, '');
-        return '<div class="info-line">' + textPart + '<a href="' + url + '" target="_blank" class="btn-link ' + btnClass + '">' + btnText + '</a></div>';
+      if (urls) {
+        // 텍스트에서 링크 부분만 제거 (텍스트만 남김)
+        var textWithoutUrls = processedText.replace(urlRegex, '').trim();
+        var buttonsHtml = '';
+
+        urls.forEach(function(url) {
+          var btnText = "تفاصيل";
+          var btnClass = "btn-detail";
+
+          if (url.includes("Weather") || url.includes("الجو")) {
+            btnText = "حالة الطقس"; btnClass = "btn-weather";
+          } else if (url.includes("wa.me") || url.includes("Guide")) {
+            btnText = "التواصل مع مرشد سياحي"; btnClass = "btn-guide";
+          }
+          
+          buttonsHtml += '<a href="' + url + '" target="_blank" class="btn-link ' + btnClass + '">' + btnText + '</a>';
+        });
+
+        return '<div class="info-line">' + (textWithoutUrls || "주소 정보") + buttonsHtml + '</div>';
       }
 
-      return '<div class="info-line">' + timeReplaced + '</div>';
+      return '<div class="info-line">' + processedText + '</div>';
     }
 
     function renderSchedule(data) {
@@ -181,7 +193,6 @@
       data.scheduleList.forEach(function(item) {
         if (!item.content || item.content.length === 0) return;
 
-        // 구글에서 번역된 제목 그대로 사용
         var cleanTitle = item.title || "تفاصيل الرحلة";
         var isActive = (item.date === tomorrowStr);
 
@@ -193,10 +204,14 @@
         html += '</div><div class="arrow">▼</div></div>';
         html += '<div class="card-content"><div class="inner-padding">';
 
-        // 💡 각 열(Cell) 단위로 독립된 박스 생성
-        item.content.forEach(function(rawLine) {
-            var rendered = processLine(rawLine);
-            if (rendered) html += rendered;
+        // 💡 각 셀 데이터를 줄바꿈 단위로 쪼개어 각각 박스로 생성
+        item.content.forEach(function(rawCell) {
+            var lines = rawCell.split('\n');
+            lines.forEach(function(line) {
+                if (line.trim() === "") return;
+                var rendered = processLine(line);
+                if (rendered) html += rendered;
+            });
         });
 
         html += '</div></div></div>';
