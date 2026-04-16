@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>معلومات الرحلة - Yalla Korea</title>
+  <style>
+    :root {
+      --brand-orange: #f18414;
+      --brand-blue: #053f5c;
+      --time-red: #d62828;
+      --bg: #f2f4f7;
+    }
+    body {
+      margin: 0; padding: 15px;
+      background: var(--bg);
+      font-family: 'Arial', sans-serif;
+      color: #333; line-height: 1.6;
+    }
+    .container { max-width: 500px; margin: 0 auto; }
+
+    /* 고객 코드가 들어갈 메인 타이틀 */
+    .title {
+      text-align: center; font-size: 26px; font-weight: 900;
+      color: var(--brand-orange); margin: 15px 0;
+      min-height: 32px;
+    }
+
+    .card {
+      background: #fff; border-radius: 16px;
+      margin-bottom: 12px; overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border: 1px solid #e1e4e8;
+    }
+
+    .date-badge {
+      display: inline-block;
+      background: var(--brand-blue); color: #fff;
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 14px; font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .card-header {
+      padding: 16px; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      background: #fff; transition: background 0.2s;
+    }
+    .card-header:hover { background: #fafafa; }
+    .header-text { flex: 1; }
+    .arrow { font-size: 14px; color: #ccc; transition: transform 0.3s; }
+
+    .card-content {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.4s ease-out;
+      background: #fcfcfc; border-top: 1px solid #f0f0f0;
+    }
+    .inner-padding { padding: 16px; }
+
+    .card.active .card-content { max-height: 3000px; }
+    .card.active .arrow { transform: rotate(180deg); }
+
+    .info-line {
+      margin-bottom: 12px; font-size: 17px;
+      font-weight: 700; display: block;
+    }
+
+    .time-highlight {
+      background: #fff3cd; color: var(--time-red);
+      padding: 1px 6px; border-radius: 5px;
+      font-weight: 900; font-size: 18px;
+    }
+
+    .btn-link {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; padding: 12px; margin-top: 8px;
+      border-radius: 10px; text-decoration: none;
+      font-weight: 900; font-size: 16px; box-sizing: border-box;
+    }
+    .btn-detail  { background: #f0f7ff; color: #007bff; border: 1px solid #cce5ff; }
+    .btn-guide   { background: #f0fff4; color: #28a745; border: 1px solid #d1e7dd; }
+    .btn-weather { background: #fff9f0; color: #fd7e14; border: 1px solid #ffe8cc; }
+
+    .loading {
+      text-align: center; padding: 60px 20px;
+      font-size: 18px; color: #888;
+    }
+
+    .footer { text-align: center; color: #aaa; font-size: 12px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title" id="main-title">معلومات الرحلة</div>
+
+    <div style="text-align:center; margin-bottom:15px;">
+  <img
+    src="https://raw.githubusercontent.com/YallaKOREA/Tourdetail/main/logo.png" 
+    alt="Yalla Korea Logo"
+    style="width:420px; max-width:98vw; height:auto; display:block; margin:0 auto;"
+    onerror="this.src='https://lh3.googleusercontent.com/d/1nyYG89QTwwoZzkRQ1LLof4cqsEta5I0Q=s2000'"
+  />
+</div>
+
+    <div id="schedule-container">
+      <div class="loading">⏳ جاري تحميل البيانات...</div>
+    </div>
+
+    <div class="footer">Yalla Korea Tour Information</div>
+  </div>
+
+  <script>
+    // ✅ 배포 ID (Code.gs 배포 후 버전이 바뀌었다면 여기를 확인하세요)
+    var APPS_SCRIPT_ID = "AKfycbzct1FZnCzibok4YhUplERHH_5e1pX6Znp3y_ZThf2peGTKsSUTcinW-n1ocHy-IGb2";
+
+    function getParam(name) {
+      var url = new URL(window.location.href);
+      return url.searchParams.get(name) || "TOUR";
+    }
+
+    var customerCode = getParam("code");
+    var apiUrl = "https://script.google.com/macros/s/" + APPS_SCRIPT_ID + "/exec?code=" + encodeURIComponent(customerCode);
+
+    function getTomorrowKST() {
+      var now = new Date();
+      var kst = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+      kst.setDate(kst.getDate() + 1);
+      var y = kst.getUTCFullYear();
+      var m = String(kst.getUTCMonth() + 1).padStart(2, '0');
+      var d = String(kst.getUTCDate()).padStart(2, '0');
+      return y + "-" + m + "-" + d;
+    }
+
+    var tomorrowStr = getTomorrowKST();
+
+    function processLine(line) {
+      line = line.trim();
+      if (!line) return null;
+
+      var timeReplaced = line.replace(/(\d{1,2}:\d{2})/g, '<span class="time-highlight">$1</span>');
+      var urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+
+      if (urlMatch) {
+        var url = urlMatch[0];
+        var btnText  = "تفاصيل";
+        var btnClass = "btn-detail";
+        if (line.includes("Weather") || line.includes("الجو")) {
+          btnText = "حالة الطقس"; btnClass = "btn-weather";
+        } else if (line.includes("wa.me") || line.includes("Guide")) {
+          btnText = "التواصل مع مرشد سياحي"; btnClass = "btn-guide";
+        }
+        var textPart = timeReplaced.replace(/(https?:\/\/[^\s]+)/g, '');
+        return '<div class="info-line">' + textPart + '<a href="' + url + '" target="_blank" class="btn-link ' + btnClass + '">' + btnText + '</a></div>';
+      }
+
+      return '<div class="info-line">' + timeReplaced + '</div>';
+    }
+
+    function renderSchedule(data) {
+      // 1) 메인 타이틀을 시트의 고객 코드로 변경
+      if (data.customerCode) {
+          document.getElementById('main-title').innerText = data.customerCode;
+      }
+
+      var container = document.getElementById('schedule-container');
+      var html = '';
+
+      if (!data.scheduleList || data.scheduleList.length === 0) {
+          container.innerHTML = '<div class="loading">일정 데이터가 없습니다.</div>';
+          return;
+      }
+
+      data.scheduleList.forEach(function(item) {
+        if (!item.content || item.content.length === 0) return;
+
+        // 한글 및 불필요한 기호 제거
+        var cleanTitle = item.title || "تفاصيل الرحلة";
+        var isActive = (item.date === tomorrowStr);
+
+        html += '<div class="card ' + (isActive ? 'active' : '') + '">';
+        html += '<div class="card-header" onclick="this.parentElement.classList.toggle(\'active\')">';
+        html += '<div class="header-text">';
+        // 2) 날짜 배지 밑에 아랍어 제목 배치
+        html += '<span class="date-badge">' + item.date + '</span>';
+        html += '<div style="font-size:19px;font-weight:900;color:var(--brand-blue); margin-top:4px;">📍 ' + cleanTitle + '</div>';
+        html += '</div><div class="arrow">▼</div></div>';
+        html += '<div class="card-content"><div class="inner-padding">';
+
+        item.content.forEach(function(rawLine) {
+          var lines = rawLine.split('\n');
+          lines.forEach(function(line) {
+            var rendered = processLine(line);
+            if (rendered) html += rendered;
+          });
+        });
+
+        html += '</div></div></div>';
+      });
+
+      container.innerHTML = html;
+    }
+
+    // 데이터 fetch
+    fetch(apiUrl)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.error) {
+          document.getElementById('schedule-container').innerHTML = '<div class="loading">❌ 오류: ' + data.error + '</div>';
+          return;
+        }
+        renderSchedule(data);
+      })
+      .catch(function(err) {
+        document.getElementById('schedule-container').innerHTML = '<div class="loading">❌ 데이터를 불러올 수 없습니다.<br>' + err.message + '</div>';
+      });
+  </script>
+</body>
+</html>
