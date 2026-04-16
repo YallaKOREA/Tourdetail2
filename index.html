@@ -19,20 +19,16 @@
       color: #333; line-height: 1.6;
     }
     .container { max-width: 500px; margin: 0 auto; }
-
     .title {
       text-align: center; font-size: 26px; font-weight: 900;
       color: var(--brand-orange); margin: 15px 0;
-      min-height: 32px;
     }
-
     .card {
       background: #fff; border-radius: 16px;
       margin-bottom: 12px; overflow: hidden;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       border: 1px solid #e1e4e8;
     }
-
     .date-badge {
       display: inline-block;
       background: var(--brand-blue); color: #fff;
@@ -40,16 +36,13 @@
       font-size: 14px; font-weight: 700;
       margin-bottom: 6px;
     }
-
     .card-header {
       padding: 16px; cursor: pointer;
       display: flex; justify-content: space-between; align-items: center;
-      background: #fff; transition: background 0.2s;
+      background: #fff;
     }
-    .card-header:hover { background: #fafafa; }
     .header-text { flex: 1; }
     .arrow { font-size: 14px; color: #ccc; transition: transform 0.3s; }
-
     .card-content {
       max-height: 0; overflow: hidden;
       transition: max-height 0.4s ease-out;
@@ -57,35 +50,40 @@
       border-top: 1px solid #f0f0f0;
     }
     .inner-padding { padding: 12px; }
-
     .card.active .card-content { max-height: 5000px; }
     .card.active .arrow { transform: rotate(180deg); }
 
-    .info-line {
-      margin-bottom: 10px;
-      padding: 15px;
+    /* ✅ 열(Cell) 단위의 큰 박스 */
+    .info-box {
+      margin-bottom: 15px;
+      padding: 16px;
       background: #ffffff;
       border-radius: 12px;
       border: 1px solid #dee2e6;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .info-box:last-child { margin-bottom: 0; }
+
+    /* 박스 내부 텍스트 스타일 */
+    .box-text {
       font-size: 16px;
       font-weight: 600;
-      display: block;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-      word-break: break-all;
-      white-space: pre-wrap;
       color: var(--brand-blue);
+      white-space: pre-wrap; /* 줄바꿈 유지 */
+      word-break: break-all;
+      margin-bottom: 10px;
     }
-    .info-line:last-child { margin-bottom: 0; }
+    .box-text:last-child { margin-bottom: 0; }
 
     .time-highlight {
       background: #fff3cd; color: var(--time-red);
       padding: 1px 6px; border-radius: 5px;
-      font-weight: 900; font-size: 18px;
+      font-weight: 900;
     }
 
     .btn-link {
       display: flex; align-items: center; justify-content: center;
-      width: 100%; padding: 12px; margin-top: 12px;
+      width: 100%; padding: 12px; margin-top: 8px;
       border-radius: 10px; text-decoration: none;
       font-weight: 900; font-size: 16px; box-sizing: border-box;
     }
@@ -93,32 +91,25 @@
     .btn-guide   { background: #f0fff4; color: #28a745; border: 1px solid #d1e7dd; }
     .btn-weather { background: #fff9f0; color: #fd7e14; border: 1px solid #ffe8cc; }
 
-    .loading { text-align: center; padding: 60px 20px; font-size: 18px; color: #888; }
+    .loading { text-align: center; padding: 60px 20px; color: #888; }
     .footer { text-align: center; color: #aaa; font-size: 12px; margin-top: 30px; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="title" id="main-title">معلومات الرحلة</div>
-
     <div style="text-align:center; margin-bottom:15px;">
-      <img
-        src="https://raw.githubusercontent.com/YallaKOREA/Tourdetail/main/logo.png" 
-        alt="Yalla Korea Logo"
-        style="width:420px; max-width:98vw; height:auto; display:block; margin:0 auto;"
-        onerror="this.src='https://lh3.googleusercontent.com/d/1nyYG89QTwwoZzkRQ1LLof4cqsEta5I0Q=s2000'"
-      />
+      <img src="https://raw.githubusercontent.com/YallaKOREA/Tourdetail/main/logo.png" 
+           alt="Yalla Korea Logo" style="width:420px; max-width:98vw; height:auto; display:block; margin:0 auto;"
+           onerror="this.src='https://lh3.googleusercontent.com/d/1nyYG89QTwwoZzkRQ1LLof4cqsEta5I0Q=s2000'"/>
     </div>
-
     <div id="schedule-container">
       <div class="loading">⏳ جاري تحميل البيانات...</div>
     </div>
-
     <div class="footer">Yalla Korea Tour Information</div>
   </div>
 
   <script>
-    // ✅ 앱스 스크립트 ID 유지
     var APPS_SCRIPT_ID = "AKfycbxMKtt63wGdau_aYKKYAHPAq1qGOI0FBC-cIWqVSOItx4iVUOjHgJS8tnowzmkeNTC79w";
 
     function getParam(name) {
@@ -138,50 +129,54 @@
       var d = String(kst.getUTCDate()).padStart(2, '0');
       return y + "-" + m + "-" + d;
     }
-
     var tomorrowStr = getTomorrowKST();
 
-    // 💡 모든 링크를 추출하여 버튼으로 만드는 핵심 함수
-    function processLine(line) {
-      line = line.trim();
-      if (!line) return null;
+    // 💡 셀 단위로 박스를 만드는 핵심 함수
+    function processCell(rawText) {
+      if (!rawText || !rawText.trim()) return '';
 
-      // 시간 강조
-      var processedText = line.replace(/(\d{1,2}:\d{2})/g, '<span class="time-highlight">$1</span>');
+      // 1. 시간 강조 처리
+      var processedText = rawText.replace(/(\d{1,2}:\d{2})/g, '<span class="time-highlight">$1</span>');
       
-      // 모든 URL 찾기 정규식
+      // 2. 모든 URL 찾기
       var urlRegex = /(https?:\/\/[^\s]+)/g;
-      var urls = line.match(urlRegex);
+      var urls = rawText.match(urlRegex);
+      
+      var buttonsHtml = '';
+      var cleanText = processedText;
 
       if (urls) {
-        // 텍스트에서 링크 부분만 제거 (텍스트만 남김)
-        var textWithoutUrls = processedText.replace(urlRegex, '').trim();
-        var buttonsHtml = '';
-
+        // 텍스트에서 URL 및 그 앞의 "주소:" 같은 불필요한 텍스트 제거 시도
+        // 보통 URL 앞에 붙는 설명 문구들을 깔끔하게 정리합니다.
+        cleanText = processedText.replace(urlRegex, '').replace(/주소\s*:\s*/g, '').replace(/Link\s*:\s*/g, '').trim();
+        
         urls.forEach(function(url) {
           var btnText = "تفاصيل";
           var btnClass = "btn-detail";
-
           if (url.includes("Weather") || url.includes("الجو")) {
             btnText = "حالة الطقس"; btnClass = "btn-weather";
           } else if (url.includes("wa.me") || url.includes("Guide")) {
             btnText = "التواصل مع مرشد سياحي"; btnClass = "btn-guide";
           }
-          
           buttonsHtml += '<a href="' + url + '" target="_blank" class="btn-link ' + btnClass + '">' + btnText + '</a>';
         });
-
-        return '<div class="info-line">' + (textWithoutUrls || "주소 정보") + buttonsHtml + '</div>';
       }
 
-      return '<div class="info-line">' + processedText + '</div>';
+      // 박스 생성: 텍스트가 있으면 넣고, 버튼이 있으면 하단에 배치
+      var html = '<div class="info-box">';
+      if (cleanText) {
+        html += '<div class="box-text">' + cleanText + '</div>';
+      }
+      if (buttonsHtml) {
+        html += buttonsHtml;
+      }
+      html += '</div>';
+      
+      return html;
     }
 
     function renderSchedule(data) {
-      if (data.customerCode) {
-          document.getElementById('main-title').innerText = data.customerCode;
-      }
-
+      if (data.customerCode) document.getElementById('main-title').innerText = data.customerCode;
       var container = document.getElementById('schedule-container');
       var html = '';
 
@@ -192,7 +187,6 @@
 
       data.scheduleList.forEach(function(item) {
         if (!item.content || item.content.length === 0) return;
-
         var cleanTitle = item.title || "تفاصيل الرحلة";
         var isActive = (item.date === tomorrowStr);
 
@@ -204,34 +198,20 @@
         html += '</div><div class="arrow">▼</div></div>';
         html += '<div class="card-content"><div class="inner-padding">';
 
-        // 💡 각 셀 데이터를 줄바꿈 단위로 쪼개어 각각 박스로 생성
-        item.content.forEach(function(rawCell) {
-            var lines = rawCell.split('\n');
-            lines.forEach(function(line) {
-                if (line.trim() === "") return;
-                var rendered = processLine(line);
-                if (rendered) html += rendered;
-            });
+        // 💡 각 열(Cell) 전체를 하나의 박스로 처리
+        item.content.forEach(function(cellData) {
+            html += processCell(cellData);
         });
 
         html += '</div></div></div>';
       });
-
       container.innerHTML = html;
     }
 
     fetch(apiUrl)
       .then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.error) {
-          document.getElementById('schedule-container').innerHTML = '<div class="loading">❌ 오류: ' + data.error + '</div>';
-          return;
-        }
-        renderSchedule(data);
-      })
-      .catch(function(err) {
-        document.getElementById('schedule-container').innerHTML = '<div class="loading">❌ 데이터를 불러올 수 없습니다.<br>' + err.message + '</div>';
-      });
+      .then(function(data) { renderSchedule(data); })
+      .catch(function(err) { console.error(err); });
   </script>
 </body>
 </html>
