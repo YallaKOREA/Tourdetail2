@@ -53,7 +53,7 @@
     .card.active .card-content { max-height: 5000px; }
     .card.active .arrow { transform: rotate(180deg); }
 
-    /* ✅ 열(Cell) 단위의 큰 박스 */
+    /* 열(Cell) 단위의 큰 박스 */
     .info-box {
       margin-bottom: 15px;
       padding: 16px;
@@ -64,16 +64,15 @@
     }
     .info-box:last-child { margin-bottom: 0; }
 
-    /* 박스 내부 텍스트 스타일 */
-    .box-text {
+    /* 텍스트 스타일 */
+    .content-line {
       font-size: 16px;
       font-weight: 600;
       color: var(--brand-blue);
-      white-space: pre-wrap; /* 줄바꿈 유지 */
+      white-space: pre-wrap;
       word-break: break-all;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
     }
-    .box-text:last-child { margin-bottom: 0; }
 
     .time-highlight {
       background: #fff3cd; color: var(--time-red);
@@ -81,12 +80,14 @@
       font-weight: 900;
     }
 
+    /* 버튼 스타일 (버튼 위에 약간의 마진을 주어 글과 구분) */
     .btn-link {
       display: flex; align-items: center; justify-content: center;
-      width: 100%; padding: 12px; margin-top: 8px;
+      width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 14px;
       border-radius: 10px; text-decoration: none;
       font-weight: 900; font-size: 16px; box-sizing: border-box;
     }
+    .btn-link:last-child { margin-bottom: 5px; }
     .btn-detail  { background: #f0f7ff; color: #007bff; border: 1px solid #cce5ff; }
     .btn-guide   { background: #f0fff4; color: #28a745; border: 1px solid #d1e7dd; }
     .btn-weather { background: #fff9f0; color: #fd7e14; border: 1px solid #ffe8cc; }
@@ -131,48 +132,50 @@
     }
     var tomorrowStr = getTomorrowKST();
 
-    // 💡 셀 단위로 박스를 만드는 핵심 함수
+    // 💡 텍스트와 버튼을 순서대로 배치하는 핵심 로직
     function processCell(rawText) {
       if (!rawText || !rawText.trim()) return '';
 
-      // 1. 시간 강조 처리
-      var processedText = rawText.replace(/(\d{1,2}:\d{2})/g, '<span class="time-highlight">$1</span>');
-      
-      // 2. 모든 URL 찾기
-      var urlRegex = /(https?:\/\/[^\s]+)/g;
-      var urls = rawText.match(urlRegex);
-      
-      var buttonsHtml = '';
-      var cleanText = processedText;
+      var lines = rawText.split('\n');
+      var cellHtml = '<div class="info-box">';
 
-      if (urls) {
-        // 텍스트에서 URL 및 그 앞의 "주소:" 같은 불필요한 텍스트 제거 시도
-        // 보통 URL 앞에 붙는 설명 문구들을 깔끔하게 정리합니다.
-        cleanText = processedText.replace(urlRegex, '').replace(/주소\s*:\s*/g, '').replace(/Link\s*:\s*/g, '').trim();
+      lines.forEach(function(line) {
+        var trimmedLine = line.trim();
+        if (!trimmedLine) return;
+
+        // 시간 강조 처리
+        var processedLine = trimmedLine.replace(/(\d{1,2}:\d{2})/g, '<span class="time-highlight">$1</span>');
         
-        urls.forEach(function(url) {
-          var btnText = "تفاصيل";
-          var btnClass = "btn-detail";
-          if (url.includes("Weather") || url.includes("الجو")) {
-            btnText = "حالة الطقس"; btnClass = "btn-weather";
-          } else if (url.includes("wa.me") || url.includes("Guide")) {
-            btnText = "التواصل مع مرشد سياحي"; btnClass = "btn-guide";
-          }
-          buttonsHtml += '<a href="' + url + '" target="_blank" class="btn-link ' + btnClass + '">' + btnText + '</a>';
-        });
-      }
+        // URL 찾기
+        var urlRegex = /(https?:\/\/[^\s]+)/g;
+        var urls = trimmedLine.match(urlRegex);
 
-      // 박스 생성: 텍스트가 있으면 넣고, 버튼이 있으면 하단에 배치
-      var html = '<div class="info-box">';
-      if (cleanText) {
-        html += '<div class="box-text">' + cleanText + '</div>';
-      }
-      if (buttonsHtml) {
-        html += buttonsHtml;
-      }
-      html += '</div>';
-      
-      return html;
+        if (urls) {
+          // URL이 포함된 줄이면: URL 앞의 텍스트(설명)만 추출 후 버튼 생성
+          var textPart = processedLine.replace(urlRegex, '').replace(/주소\s*:\s*/g, '').replace(/Link\s*:\s*/g, '').trim();
+          
+          if (textPart) {
+            cellHtml += '<div class="content-line">' + textPart + '</div>';
+          }
+          
+          urls.forEach(function(url) {
+            var btnText = "تفاصيل";
+            var btnClass = "btn-detail";
+            if (url.includes("Weather") || url.includes("الجو")) {
+              btnText = "حالة الطقس"; btnClass = "btn-weather";
+            } else if (url.includes("wa.me") || url.includes("Guide")) {
+              btnText = "التواصل مع مرشد سياحي"; btnClass = "btn-guide";
+            }
+            cellHtml += '<a href="' + url + '" target="_blank" class="btn-link ' + btnClass + '">' + btnText + '</a>';
+          });
+        } else {
+          // 일반 텍스트 줄이면 그대로 출력
+          cellHtml += '<div class="content-line">' + processedLine + '</div>';
+        }
+      });
+
+      cellHtml += '</div>';
+      return cellHtml;
     }
 
     function renderSchedule(data) {
@@ -198,7 +201,6 @@
         html += '</div><div class="arrow">▼</div></div>';
         html += '<div class="card-content"><div class="inner-padding">';
 
-        // 💡 각 열(Cell) 전체를 하나의 박스로 처리
         item.content.forEach(function(cellData) {
             html += processCell(cellData);
         });
