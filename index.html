@@ -53,6 +53,25 @@
     .card.active .card-content { max-height: 5000px; }
     .card.active .arrow { transform: rotate(180deg); }
 
+    /* 이미지 컨테이너 스타일 */
+    .image-gallery {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      margin-bottom: 15px;
+      padding-bottom: 5px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .info-img {
+      width: 100%;
+      min-width: 250px;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      background: #eee;
+    }
+
     /* 열(Cell) 단위의 큰 박스 */
     .info-box {
       margin-bottom: 15px;
@@ -64,7 +83,6 @@
     }
     .info-box:last-child { margin-bottom: 0; }
 
-    /* 텍스트 스타일 */
     .content-line {
       font-size: 16px;
       font-weight: 600;
@@ -80,7 +98,6 @@
       font-weight: 900;
     }
 
-    /* 버튼 스타일 (버튼 위에 약간의 마진을 주어 글과 구분) */
     .btn-link {
       display: flex; align-items: center; justify-content: center;
       width: 100%; padding: 12px; margin-top: 6px; margin-bottom: 14px;
@@ -132,32 +149,19 @@
     }
     var tomorrowStr = getTomorrowKST();
 
-    // 💡 텍스트와 버튼을 순서대로 배치하는 핵심 로직
     function processCell(rawText) {
       if (!rawText || !rawText.trim()) return '';
-
       var lines = rawText.split('\n');
       var cellHtml = '<div class="info-box">';
-
       lines.forEach(function(line) {
         var trimmedLine = line.trim();
         if (!trimmedLine) return;
-
-        // 시간 강조 처리
         var processedLine = trimmedLine.replace(/(\d{1,2}:\d{2})/g, '<span class="time-highlight">$1</span>');
-        
-        // URL 찾기
         var urlRegex = /(https?:\/\/[^\s]+)/g;
         var urls = trimmedLine.match(urlRegex);
-
         if (urls) {
-          // URL이 포함된 줄이면: URL 앞의 텍스트(설명)만 추출 후 버튼 생성
           var textPart = processedLine.replace(urlRegex, '').replace(/주소\s*:\s*/g, '').replace(/Link\s*:\s*/g, '').trim();
-          
-          if (textPart) {
-            cellHtml += '<div class="content-line">' + textPart + '</div>';
-          }
-          
+          if (textPart) cellHtml += '<div class="content-line">' + textPart + '</div>';
           urls.forEach(function(url) {
             var btnText = "تفاصيل";
             var btnClass = "btn-detail";
@@ -169,11 +173,9 @@
             cellHtml += '<a href="' + url + '" target="_blank" class="btn-link ' + btnClass + '">' + btnText + '</a>';
           });
         } else {
-          // 일반 텍스트 줄이면 그대로 출력
           cellHtml += '<div class="content-line">' + processedLine + '</div>';
         }
       });
-
       cellHtml += '</div>';
       return cellHtml;
     }
@@ -182,7 +184,6 @@
       if (data.customerCode) document.getElementById('main-title').innerText = data.customerCode;
       var container = document.getElementById('schedule-container');
       var html = '';
-
       if (!data.scheduleList || data.scheduleList.length === 0) {
           container.innerHTML = '<div class="loading">일정 데이터가 없습니다.</div>';
           return;
@@ -200,6 +201,15 @@
         html += '<div style="font-size:19px;font-weight:900;color:var(--brand-blue); margin-top:4px;">📍 ' + cleanTitle + '</div>';
         html += '</div><div class="arrow">▼</div></div>';
         html += '<div class="card-content"><div class="inner-padding">';
+
+        // 💡 이미지 갤러리 추가 (있을 경우 상단에 노출)
+        if (item.images && item.images.length > 0) {
+          html += '<div class="image-gallery">';
+          item.images.forEach(function(imgUrl) {
+            if (imgUrl) html += '<img src="' + imgUrl + '" class="info-img" onerror="this.style.display=\'none\'">';
+          });
+          html += '</div>';
+        }
 
         item.content.forEach(function(cellData) {
             html += processCell(cellData);
