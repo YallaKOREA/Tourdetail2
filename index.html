@@ -83,16 +83,16 @@
     }
     .info-box:last-child { margin-bottom: 0; }
 
-    /* 💡 아랍어 줄바꿈 깨짐 방지 처리된 부분 */
+    /* 아랍어 줄바꿈 깨짐 방지 처리된 부분 */
     .content-line {
       font-size: 16px;
       font-weight: 600;
       color: var(--brand-blue);
       white-space: pre-wrap;
-      overflow-wrap: break-word; /* 단어 단위로 안전하게 줄바꿈 */
-      word-wrap: break-word;     /* 구형 브라우저 호환성 */
+      overflow-wrap: break-word;
+      word-wrap: break-word;
       margin-bottom: 4px;
-      line-height: 1.7;          /* 아랍어 가독성을 위해 줄간격 살짝 증가 */
+      line-height: 1.7;
     }
 
     .time-highlight {
@@ -141,13 +141,19 @@
     var customerCode = getParam("code");
     var apiUrl = "https://script.google.com/macros/s/" + APPS_SCRIPT_ID + "/exec?code=" + encodeURIComponent(customerCode);
 
+    // ── [수정] 한국 시간(KST) 기준 안전한 내일 날짜 매칭 함수 ──
     function getTomorrowKST() {
       var now = new Date();
-      var kst = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+      // 접속 환경 상관없이 한국 시간으로 강제 보정 (+9시간)
+      var utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+      var kst = new Date(utc + (9 * 60 * 60 * 1000));
+      
+      // 내일 날짜 계산
       kst.setDate(kst.getDate() + 1);
-      var y = kst.getUTCFullYear();
-      var m = String(kst.getUTCMonth() + 1).padStart(2, '0');
-      var d = String(kst.getUTCDate()).padStart(2, '0');
+      
+      var y = kst.getFullYear();
+      var m = String(kst.getMonth() + 1).padStart(2, '0');
+      var d = String(kst.getDate()).padStart(2, '0');
       return y + "-" + m + "-" + d;
     }
     var tomorrowStr = getTomorrowKST();
@@ -195,9 +201,13 @@
       data.scheduleList.forEach(function(item) {
         if (!item.content || item.content.length === 0) return;
         var cleanTitle = item.title || "تفاصيل الرحلة";
-        var isActive = (item.date === tomorrowStr);
+        
+        // ── [수정] 날짜 문자열 공백 및 포맷 안전화 비교 ──
+        var itemDateStr = String(item.date).trim();
+        var isActive = (itemDateStr === tomorrowStr);
 
-        html += '<div class="card ' + (isActive ? 'active' : '') + '">';
+        // 스크롤 이동을 위해 내일 일정 카드에 id="tomorrow-card" 부여
+        html += '<div class="card ' + (isActive ? 'active' : '') + '" ' + (isActive ? 'id="tomorrow-card"' : '') + '>';
         html += '<div class="card-header" onclick="this.parentElement.classList.toggle(\'active\')">';
         html += '<div class="header-text">';
         html += '<span class="date-badge">' + item.date + '</span>';
@@ -220,6 +230,14 @@
         html += '</div></div></div>';
       });
       container.innerHTML = html;
+
+      // ── [추가] 렌더링 완료 후 내일 일정 위치로 자동 포커싱 및 스크롤 이동 ──
+      setTimeout(function() {
+        var tomorrowCard = document.getElementById('tomorrow-card');
+        if (tomorrowCard) {
+          tomorrowCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 200);
     }
 
     fetch(apiUrl)
