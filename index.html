@@ -28,7 +28,20 @@
       margin-bottom: 12px; overflow: hidden;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       border: 1px solid #e1e4e8;
+      transition: all 0.3s ease;
     }
+    
+    /* ── [추가] 1) 지난 일정 회색조 및 투명도 스타일 ── */
+    .card.past-day {
+      opacity: 0.45;
+      filter: grayscale(60%);
+    }
+    /* 지난 일정에 마우스 올리거나 터치 시 슬쩍 선명하게 효과 */
+    .card.past-day:hover {
+      opacity: 0.8;
+      filter: grayscale(20%);
+    }
+
     .date-badge {
       display: inline-block;
       background: var(--brand-blue); color: #fff;
@@ -83,7 +96,7 @@
     }
     .info-box:last-child { margin-bottom: 0; }
 
-    /* 아랍어 줄바꿈 깨짐 방지 처리된 부분 */
+    /* 아랍어 줄바꿈 깨짐 방지 */
     .content-line {
       font-size: 16px;
       font-weight: 600;
@@ -131,7 +144,7 @@
   </div>
 
   <script>
-    var APPS_SCRIPT_ID = "AKfycbyb1VePFHHdSiV-eTTpuipaqgJQxxuJZtp67RdMlsKppVxkJ_bDQMP1ZrF_TdfC90oo2A";
+    var APPS_SCRIPT_ID = "AKfycbwWn4__xUOG_tPfogowibkfI4_SeC_m-inen9YWil7YeZoK7quZaUcPJUc_CeC1aWVfyw";
 
     function getParam(name) {
       var url = new URL(window.location.href);
@@ -141,22 +154,22 @@
     var customerCode = getParam("code");
     var apiUrl = "https://script.google.com/macros/s/" + APPS_SCRIPT_ID + "/exec?code=" + encodeURIComponent(customerCode);
 
-    // ── [수정] 한국 시간(KST) 기준 안전한 내일 날짜 매칭 함수 ──
-    function getTomorrowKST() {
+    // ── [수정] 자바스크립트 Date 객체 비교용 한국 표준시 타임스탬프 생성 ──
+    function getKSTMidnight(offsetDays) {
       var now = new Date();
-      // 접속 환경 상관없이 한국 시간으로 강제 보정 (+9시간)
       var utc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
       var kst = new Date(utc + (9 * 60 * 60 * 1000));
       
-      // 내일 날짜 계산
-      kst.setDate(kst.getDate() + 1);
-      
-      var y = kst.getFullYear();
-      var m = String(kst.getMonth() + 1).padStart(2, '0');
-      var d = String(kst.getDate()).padStart(2, '0');
-      return y + "-" + m + "-" + d;
+      if (offsetDays) {
+        kst.setDate(kst.getDate() + offsetDays);
+      }
+      // 날짜 비교를 위해 시/분/초를 00:00:00으로 초기화
+      kst.setHours(0, 0, 0, 0);
+      return kst.getTime();
     }
-    var tomorrowStr = getTomorrowKST();
+    
+    var todayTimestamp = getKSTMidnight(0);       // 오늘 (5/19 00:00:00)
+    var tomorrowTimestamp = getKSTMidnight(1);    // 내일 (5/20 00:00:00)
 
     function processCell(rawText) {
       if (!rawText || !rawText.trim()) return '';
@@ -202,12 +215,21 @@
         if (!item.content || item.content.length === 0) return;
         var cleanTitle = item.title || "تفاصيل الرحلة";
         
-        // ── [수정] 날짜 문자열 공백 및 포맷 안전화 비교 ──
-        var itemDateStr = String(item.date).trim();
-        var isActive = (itemDateStr === tomorrowStr);
+        // ── [수정] "May 2026 18" 같은 다양한 포맷의 문자열을 Date 객체로 안전하게 파싱 ──
+        var itemDateObj = new Date(item.date);
+        itemDateObj.setHours(0,0,0,0);
+        var itemTimestamp = itemDateObj.getTime();
 
-        // 스크롤 이동을 위해 내일 일정 카드에 id="tomorrow-card" 부여
-        html += '<div class="card ' + (isActive ? 'active' : '') + '" ' + (isActive ? 'id="tomorrow-card"' : '') + '>';
+        // 조건 계산
+        var isPast = (itemTimestamp < todayTimestamp);       // 오늘보다 전인가? (지난 일정)
+        var isActive = (itemTimestamp === tomorrowTimestamp); // 내일 날짜와 일치하는가?
+
+        // ── [수정] 지난 일정이면 'past-day' 클래스 추가, 내일 일정이면 'active' 클래스 추가 ──
+        var cardClass = 'card';
+        if (isPast) cardClass += ' past-day';
+        if (isActive) cardClass += ' active';
+
+        html += '<div class="' + cardClass + '" ' + (isActive ? 'id="tomorrow-card"' : '') + '>';
         html += '<div class="card-header" onclick="this.parentElement.classList.toggle(\'active\')">';
         html += '<div class="header-text">';
         html += '<span class="date-badge">' + item.date + '</span>';
@@ -231,7 +253,7 @@
       });
       container.innerHTML = html;
 
-      // ── [추가] 렌더링 완료 후 내일 일정 위치로 자동 포커싱 및 스크롤 이동 ──
+      // 내일 일정 위치로 자동 스크롤 이동
       setTimeout(function() {
         var tomorrowCard = document.getElementById('tomorrow-card');
         if (tomorrowCard) {
